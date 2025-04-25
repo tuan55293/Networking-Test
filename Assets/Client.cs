@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,6 +16,9 @@ public class Client : MonoBehaviour
     public int myId = 0;
     public TCP tcp;
 
+    private delegate void PacketHandler(Packet _packet);
+    private static Dictionary<int, PacketHandler> packetHandlers;
+
     private void Awake()
     {
         instance = this;
@@ -23,11 +26,12 @@ public class Client : MonoBehaviour
     private void Start()
     {
         tcp = new TCP();
-        ConnectToServer();
+        //ConnectToServer();
     }
 
     public void ConnectToServer()
     {
+        InitializeClientData();
         tcp.Connect();
     }
     private void OnDestroy()
@@ -35,11 +39,26 @@ public class Client : MonoBehaviour
         tcp.socket.Close();
     }
 
+    private void InitializeClientData()
+    {
+        packetHandlers = new Dictionary<int, PacketHandler>()
+        {
+
+            { (int)ServerPackets.welcome, ClientHandle.Welcome },
+        };
+        Debug.Log("Initialized packets.");
+    }
+
+
+
     public class TCP 
     {
         public TcpClient socket;
 
         private NetworkStream stream;
+
+        private Packet receivedData;
+
         private byte[] receiveBuffer;
         public void Connect()
         {
@@ -58,6 +77,9 @@ public class Client : MonoBehaviour
                 return;
             }
             stream = socket.GetStream();
+
+            receivedData = new Packet();
+
             stream.BeginRead(receiveBuffer, 0, dataBufferSize ,ReceiveCallback, null);
         }
 
@@ -75,7 +97,7 @@ public class Client : MonoBehaviour
                 byte[] _data = new byte[_byteLength];
                 Array.Copy(receiveBuffer, _data, _byteLength);
 
-                // TODO: handle data
+                receivedData.Reset(HandleData(_data));
 
                 stream.BeginRead(receiveBuffer, 0, dataBufferSize, ReceiveCallback, null);
             }
@@ -84,6 +106,53 @@ public class Client : MonoBehaviour
                 Debug.Log("Disconnect");
                 // TODO: disconnect
             }
+        }
+
+        /// <summary>Handles the data received from the server.</summary>
+        private bool HandleData(byte[] _data)
+        {
+            int _packetLength = 0;
+            receivedData.SetBytes(_data);
+
+            // Kiểm tra nếu data còn lại chưa đọc có độ dài nhỏ hơn 4 thì không thể đọc được.
+            // Dang demo với việc lấy dữ liệu int, mỗi int chiếm 4byte, nếu không lớn hơn 4byte thì không có dữ liệu.
+            // 4byte đầu tiên đang dùng để lưu giá trị độ dài của data rồi.
+            if (receivedData.UnreadLength() >= 4)
+            {
+                _packetLength = receivedData.ReadInt();
+                if(_packetLength <=0)
+                {
+                    return true;
+                }
+            }
+            while (_packetLength > 0 && _packetLength <= receivedData.UnreadLength())
+            {
+                byte[] _packetBytes = receivedData.ReadBytes(_packetLength);
+                ThreadManager.ExecuteOnMainThread(() =>
+                {
+                    using (Packet _packet = new Packet(_packetBytes))
+                    {
+                        int _packetId = _packet.ReadInt();
+                        packetHandlers[_packetId](_packet);
+                    }
+                });
+                _packetLength = 0;
+                if (receivedData.UnreadLength() >= 4)
+                {
+                    _packetLength = receivedData.ReadInt();
+                    if (_packetLength <= 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            if(_packetLength <= 1)
+            {
+                return true;
+            }
+
+            return false;
         }
 
     }
