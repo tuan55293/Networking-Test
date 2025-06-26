@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -16,7 +16,7 @@ class ThreadManager : MonoBehaviour
 
     /// <summary>Sets an action to be executed on the main thread.</summary>
     /// <param name="_action">The action to be executed on the main thread.</param>
-    public static void ExecuteOnMainThread(Action _action)
+    public static void ExecuteOnMainThread(Action _action) // Thêm hành động xử lý data vào list để gọi.
     {
         if (_action == null)
         {
@@ -34,7 +34,7 @@ class ThreadManager : MonoBehaviour
     /// <summary>Executes all code meant to run on the main thread. NOTE: Call this ONLY from the main thread.</summary>
     public static void UpdateMain()
     {
-        if (actionToExecuteOnMainThread)
+        if (actionToExecuteOnMainThread) // Nếu có hành động nào đó được thêm vào list thì thực hiện. Đồng nghĩa với việc có dữ liệu được nhận từ server.
         {
             executeCopiedOnMainThread.Clear();
             lock (executeOnMainThread)
