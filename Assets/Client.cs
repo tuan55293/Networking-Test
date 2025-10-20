@@ -11,7 +11,7 @@ public class Client : MonoBehaviour
     public static Client instance;
     public static int dataBufferSize = 4096;
 
-    public string ip = "127.0.0.1";
+    public string ip = "127.0.0.193";
     public int port = 26950;
     public int myId = 0;
     public TCP tcp;
@@ -70,6 +70,12 @@ public class Client : MonoBehaviour
 
         private void ConnectCallback(IAsyncResult _result)
         {
+
+            // Sau khi kết nối thành công với server thì server đã có 1 socket đại diện cho client và chứa ip + port,....
+            // Dựa vào thông tin đó thì server và client đã có thể giao tiếp và biết với nhau thông qua các địa chỉ.
+            // Chính vì thế mà socket client và server khác nhau nhưng lại có thể giao tiếp và nhận dữ liệu cho nhau thông qua stream được tạo ra bởi socket.
+            // Vì socket tại client và server có thể nói là giống nhau và chung 1 kết nối thế nên sẽ truyền nhận dữ liêu được với nhau.
+            // Và để phân biệt các client với nhau thì đã có các ip và port, nếu tạo nhiều client trên 1 máy thì sẽ trùng ip nhưng sẽ khác port, do đó server vẫn biết dữ liệu sẽ đổ về đâu dựa vào ip và port khác nhau giữa các client.
             socket.EndConnect(_result);
             if (!socket.Connected)
             {
@@ -106,7 +112,7 @@ public class Client : MonoBehaviour
             }
             catch (Exception e) 
             {
-                Debug.Log("Disconnect");
+                Debug.Log("Disconnect" + e.ToString());
                 // TODO: disconnect
             }
         }
